@@ -33,6 +33,9 @@ main_menu_kb = ReplyKeyboardMarkup(
             KeyboardButton(text="ℹ О магазине"),
             KeyboardButton(text="📞 Связаться"),
         ],
+        [
+            KeyboardButton(text="🛒 Корзина"),   # 👈 ДОБАВИЛИ ОТДЕЛЬНОЙ СТРОКОЙ
+        ],
     ],
     resize_keyboard=True,
     input_field_placeholder="Выберите действие…",

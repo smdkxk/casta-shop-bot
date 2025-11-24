@@ -126,7 +126,7 @@ async def process_contact(message: Message, state: FSMContext):
     # формируем текст заказа
     order_text = "🆕 Новый заказ\n\n"
     order_text += f"👤 Пользователь: @{message.from_user.username or 'без username'} (ID: {user_id})\n"
-    order_text += f"📞 Контакты(@твой юзернейм): {contact_text}\n\n"
+    order_text += f"📞 Контакты: {contact_text}\n\n"
     order_text += "🛒 Товары:\n"
 
     total = 0
@@ -152,4 +152,5 @@ async def process_contact(message: Message, state: FSMContext):
     )
 
     await state.clear()
+
 
