@@ -117,8 +117,8 @@ async def show_category_products(callback: CallbackQuery):
     for product in items:
         caption = (
             f"🛍 {product['title']}\n\n"
-            f"{product['description']}\n\n"
-            f"💰 {product['price']} ₽\n"
+            f"Описание: {product['description']}\n\n"
+            f"💰Цена: {product['price']} ₽\n"
             "Если интересно — напиши мне, оформим заказ 🙂"
         )
 
