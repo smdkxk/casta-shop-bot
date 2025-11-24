@@ -72,6 +72,46 @@ async def admin_panel(message: Message):
 
     await message.answer("🔧 Админ-панель", reply_markup=keyboard)
 
+@router.callback_query(F.data == "admin_list_items")
+async def admin_list_items(callback):
+    if not is_admin(callback.from_user.id):
+        return await callback.answer("Нет доступа", show_alert=True)
+
+    catalog = load_catalog()
+    categories = catalog.get("categories", {})
+
+    if not categories or all(len(items) == 0 for items in categories.values()):
+        await callback.message.answer("📭 В каталоге пока нет ни одного товара.")
+        return await callback.answer()
+
+    text_lines = ["📦 <b>Список товаров:</b>\n"]
+
+    name_map = {
+        "shorts": "Шорты",
+        "pants": "Штаны",
+        "tshirts": "Футболки",
+        "hoodies": "Кофты / худи",
+        "jackets": "Куртки",
+        "hats": "Головные уборы",
+        "accessories": "Аксессуары",
+    }
+
+    for key, items in categories.items():
+        if not items:
+            continue
+
+        cat_name = name_map.get(key, key)
+        text_lines.append(f"🗂 <b>{cat_name}</b>:")
+
+        for product in items:
+            text_lines.append(
+                f"  • #{product['id']} — {product['title']} ({product['price']})"
+            )
+
+        text_lines.append("")  # пустая строка между категориями
+
+    await callback.message.answer("\n".join(text_lines))
+    await callback.answer()
 
 # ------- Нажали «➕ Добавить товар» -------
 
