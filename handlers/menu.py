@@ -139,25 +139,74 @@ async def show_category_products(callback: CallbackQuery):
     }
     cat_name = name_map.get(category_key, category_key)
 
-    # Клавиатура со списком товаров
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=f"{p['title']} — {p['price']} ₽",
-                    callback_data=f"product_{category_key}_{p['id']}"
-                )
-            ]
-            for p in items
-        ]
-    )
+    buttons: list[list[InlineKeyboardButton]] = []
+
+    # 🔙 самая верхняя кнопка — назад ко всем категориям
+    buttons.append([
+        InlineKeyboardButton(
+            text="⬅ Назад к категориям",
+            callback_data="back_to_categories",
+        )
+    ])
+
+    # 🧾 список товаров
+    for p in items:
+        buttons.append([
+            InlineKeyboardButton(
+                text=f"{p['title']} — {p['price']} ₽",
+                callback_data=f"product_{category_key}_{p['id']}",
+            )
+        ])
+
+    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
 
     await callback.message.answer(
-        f"📦 Выбери товар в категории <b>{cat_name}</b> 👇",
-        reply_markup=kb
+        f"📦 Выбери товар в категории {cat_name} 👇",
+        reply_markup=kb,
     )
 
     await callback.answer()
+
+    @router.callback_query(F.data == "back_to_categories")
+    async def back_to_categories(callback: CallbackQuery):
+        catalog = load_catalog()
+        categories = catalog.get("categories", {})
+
+        name_map = {
+            "shorts": "Шорты",
+            "pants": "Штаны",
+            "tshirts": "Футболки",
+            "hoodies": "Кофты / худи",
+            "jackets": "Куртки",
+            "hats": "Головные уборы",
+            "accessories": "Аксессуары",
+        }
+
+        buttons: list[list[InlineKeyboardButton]] = []
+
+        for key, items in categories.items():
+            if not items:
+                continue  # пустые категории не показываем
+            label = name_map.get(key, key)
+            buttons.append([
+                InlineKeyboardButton(
+                    text=label,
+                    callback_data=f"user_cat_{key}",
+                )
+            ])
+
+        if not buttons:
+            await callback.message.edit_text(
+                "Пока в каталоге нет товаров, скоро всё появится 🙂"
+            )
+        else:
+            kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+            await callback.message.edit_text(
+                "Выбери категорию 👇",
+                reply_markup=kb,
+            )
+
+        await callback.answer()
 
     @router.callback_query(F.data.startswith("product_"))
     async def show_product(callback: CallbackQuery):
