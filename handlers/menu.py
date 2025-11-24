@@ -128,7 +128,6 @@ async def show_category_products(callback: CallbackQuery):
         await callback.answer("В этой категории пока нет товаров", show_alert=True)
         return
 
-    # Можно красивое имя категории, как выше
     name_map = {
         "shorts": "Шорты",
         "pants": "Штаны",
@@ -140,25 +139,74 @@ async def show_category_products(callback: CallbackQuery):
     }
     cat_name = name_map.get(category_key, category_key)
 
-    await callback.message.answer(f"📦 Товары в категории: {cat_name}")
-
-    for product in items:
-        caption = (
-            f"🛍 {product['title']}\n\n"
-            f"Описание: {product['description']}\n\n"
-            f"💰Цена: {product['price']} ₽\n"
-            "Если интересно — напиши мне, оформим заказ 🙂"
-        )
-
-        # Отправляем по file_id, который ты сохранил в admin.py
-        kb = InlineKeyboardMarkup(inline_keyboard=[
+    # Клавиатура со списком товаров
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🛒 Добавить в корзину",
-                    callback_data=f"add_to_cart_{product['id']}"
+                    text=f"{p['title']} — {p['price']} ₽",
+                    callback_data=f"product_{category_key}_{p['id']}"
                 )
             ]
-        ])
+            for p in items
+        ]
+    )
+
+    await callback.message.answer(
+        f"📦 Выбери товар в категории <b>{cat_name}</b> 👇",
+        reply_markup=kb
+    )
+
+    await callback.answer()
+
+    @router.callback_query(F.data.startswith("product_"))
+    async def show_product(callback: CallbackQuery):
+        # Формат callback_data: product_<category_key>_<product_id>
+        try:
+            _, category_key, product_id_str = callback.data.split("_", 2)
+            product_id = int(product_id_str)
+        except Exception:
+            await callback.answer("Ошибка данных товара", show_alert=True)
+            return
+
+        catalog = load_catalog()
+        categories = catalog.get("categories", {})
+        items = categories.get(category_key, [])
+
+        product = None
+        for p in items:
+            if int(p["id"]) == product_id:
+                product = p
+                break
+
+        if not product:
+            await callback.answer("Товар не найден", show_alert=True)
+            return
+
+        caption = (
+            f"🛍 <b>{product['title']}</b>\n\n"
+            f"{product['description']}\n\n"
+            f"💰 <b>{product['price']} ₽</b>\n\n"
+            "Если нравится — добавь в корзину 👇"
+        )
+
+        # Клавиатура под товаром: в корзину + назад к категории
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🛒 Добавить в корзину",
+                        callback_data=f"add_to_cart_{product_id}"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="⬅ Назад к списку",
+                        callback_data=f"user_cat_{category_key}"
+                    )
+                ],
+            ]
+        )
 
         await callback.message.answer_photo(
             product["photo_file_id"],
@@ -166,7 +214,31 @@ async def show_category_products(callback: CallbackQuery):
             reply_markup=kb
         )
 
-    await callback.answer()
+        # ---------- РЕКОМЕНДАЦИИ ----------
+
+        # берём до 3 других товаров из этой же категории
+        similar_items = [p for p in items if int(p["id"]) != product_id][:3]
+
+        if similar_items:
+            rec_kb = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text=f"{p['title']} — {p['price']} ₽",
+                            callback_data=f"product_{category_key}_{p['id']}"
+                        )
+                    ]
+                    for p in similar_items
+                ]
+            )
+
+            await callback.message.answer(
+                "Похожие товары 👇",
+                reply_markup=rec_kb
+            )
+
+        await callback.answer()
+
 
 # 🟣 КНОПКА «📏 Размеры» — открываем меню размеров
 @router.message(F.text == "📏 Размеры")
