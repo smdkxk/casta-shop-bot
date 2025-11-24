@@ -1,7 +1,6 @@
 from aiogram import Router, types
 from aiogram.filters import CommandStart
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-from .menu import main_menu_kb
 from .menu import get_main_menu_kb
 
 
