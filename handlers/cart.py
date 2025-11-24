@@ -52,17 +52,17 @@ async def show_cart(message: Message):
     from handlers.menu import load_catalog
     catalog = load_catalog()
 
-    text = "<b>🛒 Твоя корзина:</b>\n\n"
+    text = "🛒 Твоя корзина:\n\n"
     total = 0
 
     for product_id in cart[user_id]:
         for cat_items in catalog.get("categories", {}).values():
             for p in cat_items:
                 if str(p["id"]) == product_id:
-                    text += f"• <b>{p['title']}</b> — {p['price']} ₽\n"
+                    text += f"• {p['title']} — {p['price']} ₽\n"
                     total += int(p['price'])
 
-    text += f"\n<b>Итого: {total} ₽</b>\n\n"
+    text += f"\nИтого: {total} ₽\n\n"
     text += "Чтобы оформить заказ, нажми:\n👉 /order"
 
     await message.answer(text)
