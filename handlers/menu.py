@@ -1,8 +1,27 @@
 from aiogram import Router, F
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, FSInputFile
+from aiogram.types import (
+    Message,
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+    FSInputFile,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    CallbackQuery,
+)
+import json
+import os
 
 
 router = Router()
+
+CATALOG_PATH = "data/catalog.json"
+
+
+def load_catalog():
+    if not os.path.exists(CATALOG_PATH):
+        return {"categories": {}}
+    with open(CATALOG_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 main_menu_kb = ReplyKeyboardMarkup(
     keyboard=[
@@ -39,12 +58,77 @@ sizes_menu_kb = ReplyKeyboardMarkup(
 # 🟣 КАТАЛОГ (из главного меню)
 @router.message(F.text == "🛍 Каталог")
 async def catalog_handler(message: Message):
-    await message.answer(
-        "Каталог скоро будет тут 😎\n"
-        "Пока можешь посмотреть вещи в Telegram-канале:\n"
-        "👉 https://t.me/+75DF7jFaB29mMTRi"
-    )
+    catalog = load_catalog()
+    categories = catalog.get("categories", {})
 
+    # Названия для пользователя
+    name_map = {
+        "shorts": "Шорты",
+        "pants": "Штаны",
+        "tshirts": "Футболки",
+        "hoodies": "Кофты / худи",
+        "jackets": "Куртки",
+        "hats": "Головные уборы",
+        "accessories": "Аксессуары",
+    }
+
+    buttons = []
+    for key, items in categories.items():
+        if not items:  # категорию без товаров не показываем
+            continue
+        label = name_map.get(key, key)
+        buttons.append(
+            [InlineKeyboardButton(text=label, callback_data=f"user_cat_{key}")]
+        )
+
+    if not buttons:
+        await message.answer("Пока в каталоге нет товаров, скоро всё появится 🙂")
+        return
+
+    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+    await message.answer("Выбери категорию 👇", reply_markup=kb)
+
+@router.callback_query(F.data.startswith("user_cat_"))
+async def show_category_products(callback: CallbackQuery):
+    category_key = callback.data.replace("user_cat_", "")
+
+    catalog = load_catalog()
+    categories = catalog.get("categories", {})
+    items = categories.get(category_key, [])
+
+    if not items:
+        await callback.answer("В этой категории пока нет товаров", show_alert=True)
+        return
+
+    # Можно красивое имя категории, как выше
+    name_map = {
+        "shorts": "Шорты",
+        "pants": "Штаны",
+        "tshirts": "Футболки",
+        "hoodies": "Кофты / худи",
+        "jackets": "Куртки",
+        "hats": "Головные уборы",
+        "accessories": "Аксессуары",
+    }
+    cat_name = name_map.get(category_key, category_key)
+
+    await callback.message.answer(f"📦 Товары в категории: <b>{cat_name}</b>")
+
+    for product in items:
+        caption = (
+            f"🛍 <b>{product['title']}</b>\n\n"
+            f"{product['description']}\n\n"
+            f"💰 <b>{product['price']} ₽</b>\n"
+            "Если интересно — напиши мне, оформим заказ 🙂"
+        )
+
+        # Отправляем по file_id, который ты сохранил в admin.py
+        await callback.message.answer_photo(
+            product["photo_file_id"],
+            caption=caption
+        )
+
+    await callback.answer()
 
 # 🟣 КНОПКА «📏 Размеры» — открываем меню размеров
 @router.message(F.text == "📏 Размеры")
