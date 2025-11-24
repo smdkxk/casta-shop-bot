@@ -15,6 +15,23 @@ import os
 router = Router()
 
 CATALOG_PATH = "data/catalog.json"
+ORDERS_PATH = "data/orders.json"
+
+
+def user_has_orders(user_id: int) -> bool:
+    """Проверяем, есть ли у пользователя хотя бы один заказ."""
+    if not os.path.exists(ORDERS_PATH):
+        return False
+
+    try:
+        with open(ORDERS_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return False
+
+    orders = data.get("orders", [])
+    return any(o.get("user_id") == str(user_id) for o in orders)
+
 
 
 def load_catalog():
@@ -23,8 +40,8 @@ def load_catalog():
     with open(CATALOG_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
 
-main_menu_kb = ReplyKeyboardMarkup(
-    keyboard=[
+def get_main_menu_kb(user_id: int) -> ReplyKeyboardMarkup:
+    buttons = [
         [
             KeyboardButton(text="🛍 Каталог"),
             KeyboardButton(text="📏 Размеры"),
@@ -33,13 +50,21 @@ main_menu_kb = ReplyKeyboardMarkup(
             KeyboardButton(text="ℹ О магазине"),
             KeyboardButton(text="📞 Связаться"),
         ],
-        [
-            KeyboardButton(text="🛒 Корзина"),   # 👈 ДОБАВИЛИ ОТДЕЛЬНОЙ СТРОКОЙ
-        ],
-    ],
-    resize_keyboard=True,
-    input_field_placeholder="Выберите действие…",
-)
+    ]
+
+    # 👇 Добавляем "Мои заказы", только если есть хотя бы один заказ
+    if user_has_orders(user_id):
+        buttons.append([KeyboardButton(text="🧾 Мои заказы")])
+
+    # Корзина – отдельной строкой, чтобы была всегда
+    buttons.append([KeyboardButton(text="🛒 Корзина")])
+
+    return ReplyKeyboardMarkup(
+        keyboard=buttons,
+        resize_keyboard=True,
+        input_field_placeholder="Выберите действие…",
+    )
+
 
 # 🔹 Меню размеров
 sizes_menu_kb = ReplyKeyboardMarkup(
@@ -222,10 +247,12 @@ async def sizes_underwear(message: Message):
 
 @router.message(F.text == "⬅ Назад")
 async def back_to_main_menu(message: Message):
+    kb = get_main_menu_kb(message.from_user.id)
     await message.answer(
         "Вернулся в главное меню 👇",
-        reply_markup=main_menu_kb,
+        reply_markup=kb,
     )
+
 
 
 # 🟣 ПРОЧЕЕ ИЗ ГЛАВНОГО МЕНЮ

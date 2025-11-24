@@ -1,7 +1,8 @@
 from aiogram import Router, F
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
+from handlers.cart import load_orders, save_orders
 
 import json
 import os
@@ -57,6 +58,164 @@ class AddProductStates(StatesGroup):
 
 
 # ------- Команда /admin: панель админа -------
+
+@router.callback_query(F.data.startswith("order_status_"))
+async def change_order_status_cb(callback: CallbackQuery):
+    # Проверяем, что нажал именно админ
+    if not is_admin(callback.from_user.id):
+        return await callback.answer("⛔ Нет доступа", show_alert=True)
+
+    # Формат: order_status_<id>_<status>
+    parts = callback.data.split("_")
+    if len(parts) != 4:
+        return await callback.answer("Некорректные данные", show_alert=True)
+
+    try:
+        order_id = int(parts[2])
+    except ValueError:
+        return await callback.answer("Некорректный ID", show_alert=True)
+
+    new_status = parts[3]
+    allowed = ["new", "processing", "shipped", "done"]
+    if new_status not in allowed:
+        return await callback.answer("Некорректный статус", show_alert=True)
+
+    data = load_orders()
+    orders = data.get("orders", [])
+
+    target_order = None
+    for o in orders:
+        if o["id"] == order_id:
+            target_order = o
+            break
+
+    if not target_order:
+        return await callback.answer(f"Заказ #{order_id} не найден", show_alert=True)
+
+    target_order["status"] = new_status
+    save_orders(data)
+
+    status_map = {
+        "new": "🟡 Новый",
+        "processing": "🟠 В обработке",
+        "shipped": "🛫 Отправлен",
+        "done": "🟢 Завершён",
+    }
+    status_text = status_map.get(new_status, new_status)
+
+    # Обновим подпись (если хочешь – можно отредактировать msg)
+    await callback.answer(f"Статус: {status_text}")
+
+    # Уведомим пользователя
+    try:
+        user_id = int(target_order["user_id"])
+        await callback.message.bot.send_message(
+            user_id,
+            f"🔔 Обновление статуса заказа #{order_id}:\n{status_text}"
+        )
+    except Exception:
+        # если не получилось отправить — просто молчим
+        pass
+
+
+@router.message(F.text == "/orders")
+async def list_orders(message: Message):
+    if not is_admin(message.from_user.id):
+        return await message.answer("⛔ У вас нет доступа")
+
+    data = load_orders()
+    orders = data.get("orders", [])
+
+    if not orders:
+        return await message.answer("Пока нет ни одного заказа.")
+
+    # показываем последние 10
+    last_orders = orders[-10:]
+
+    status_map = {
+        "new": "🟡 Новый",
+        "processing": "🟠 В обработке",
+        "shipped": "🛫 Отправлен",
+        "done": "🟢 Завершён",
+    }
+
+    lines = ["<b>Последние заказы:</b>\n"]
+
+    for o in last_orders:
+        status_emoji = status_map.get(o["status"], o["status"])
+        lines.append(
+            f"#{o['id']} — {status_emoji} — {o['total']} ₽\n"
+            f"👤 @{o.get('username') or 'без username'} (ID: {o['user_id']})"
+        )
+        lines.append("")  # пустая строка
+
+    await message.answer("\n".join(lines))
+
+    @router.message(F.text.startswith("/setstatus"))
+    async def set_order_status(message: Message):
+        if not is_admin(message.from_user.id):
+            return await message.answer("⛔ У вас нет доступа")
+
+        parts = message.text.split()
+
+        if len(parts) != 3:
+            return await message.answer(
+                "Использование:\n"
+                "/setstatus <id> <status>\n\n"
+                "Статусы: new, processing, shipped, done"
+            )
+
+        try:
+            order_id = int(parts[1])
+        except ValueError:
+            return await message.answer("ID заказа должен быть числом.")
+
+        new_status = parts[2].strip().lower()
+        allowed = ["new", "processing", "shipped", "done"]
+
+        if new_status not in allowed:
+            return await message.answer(
+                "Неверный статус.\nДопустимые: new, processing, shipped, done"
+            )
+
+        data = load_orders()
+        orders = data.get("orders", [])
+
+        target_order = None
+        for o in orders:
+            if o["id"] == order_id:
+                target_order = o
+                break
+
+        if not target_order:
+            return await message.answer(f"Заказ #{order_id} не найден.")
+
+        target_order["status"] = new_status
+        save_orders(data)
+
+        # карта для красивого текста
+        status_map = {
+            "new": "🟡 Новый",
+            "processing": "🟠 В обработке",
+            "shipped": "🛫 Отправлен",
+            "done": "🟢 Завершён",
+        }
+        status_text = status_map[new_status]
+
+        await message.answer(f"Статус заказа #{order_id} изменён на: {status_text}")
+
+        # уведомим пользователя
+        try:
+            user_id = int(target_order["user_id"])
+            await message.bot.send_message(
+                user_id,
+                f"🔔 Обновление статуса заказа #{order_id}:\n{status_text}"
+            )
+        except Exception:
+            # если не получилось отправить (юзер заблокал бота и т.п.) — просто молчим
+            pass
+
+
 
 @router.message(F.text == "/admin")
 async def admin_panel(message: Message):
