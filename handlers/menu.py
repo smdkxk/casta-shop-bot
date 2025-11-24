@@ -96,7 +96,7 @@ async def sizes_outerwear(message: Message):
 
 @router.message(F.text == "5. Рубашки")
 async def sizes_shirts(message: Message):
-    photo = FSInputFile("data/images/sizerubashka.png")
+    photo = FSInputFile("data/images/rubashka.png")
     await message.answer_photo(
         photo,
         caption="Размерная сетка: рубашки",
