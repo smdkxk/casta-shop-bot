@@ -112,13 +112,13 @@ async def show_category_products(callback: CallbackQuery):
     }
     cat_name = name_map.get(category_key, category_key)
 
-    await callback.message.answer(f"📦 Товары в категории: <b>{cat_name}</b>")
+    await callback.message.answer(f"📦 Товары в категории: {cat_name}")
 
     for product in items:
         caption = (
-            f"🛍 <b>{product['title']}</b>\n\n"
+            f"🛍 {product['title']}\n\n"
             f"{product['description']}\n\n"
-            f"💰 <b>{product['price']} ₽</b>\n"
+            f"💰 {product['price']} ₽\n"
             "Если интересно — напиши мне, оформим заказ 🙂"
         )
 
