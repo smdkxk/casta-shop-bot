@@ -1,6 +1,6 @@
 from .start import router as start_router
 from .menu import router as menu_router
 from .admin import router as admin_router
+from .cart import router as cart_router
 
-
-routers = [start_router, menu_router, admin_router]
+routers = [start_router, menu_router, admin_router, cart_router]

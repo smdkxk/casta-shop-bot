@@ -123,9 +123,19 @@ async def show_category_products(callback: CallbackQuery):
         )
 
         # Отправляем по file_id, который ты сохранил в admin.py
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🛒 Добавить в корзину",
+                    callback_data=f"add_to_cart_{product['id']}"
+                )
+            ]
+        ])
+
         await callback.message.answer_photo(
             product["photo_file_id"],
-            caption=caption
+            caption=caption,
+            reply_markup=kb
         )
 
     await callback.answer()
