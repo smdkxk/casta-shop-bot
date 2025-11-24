@@ -1,9 +1,11 @@
 {
-  "shorts": [],
-  "pants": [],
-  "tshirts": [],
-  "hoodies": [],
-  "jackets": [],
-  "hats": [],
-  "accessories": []
+  "categories": {
+    "shorts": [],
+    "pants": [],
+    "tshirts": [],
+    "hoodies": [],
+    "jackets": [],
+    "hats": [],
+    "accessories": []
+  }
 }
