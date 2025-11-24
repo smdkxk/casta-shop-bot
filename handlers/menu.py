@@ -28,7 +28,7 @@ sizes_menu_kb = ReplyKeyboardMarkup(
         [KeyboardButton(text="4. Куртки / ветровки / пуховики")],
         [KeyboardButton(text="5. Рубашки")],
         [KeyboardButton(text="6. Шорты")],
-        [KeyboardButton(text="7. Трусы")],
+        [KeyboardButton(text="7. Нижнее белье")],
         [KeyboardButton(text="⬅ Назад")],
     ],
     resize_keyboard=True,
