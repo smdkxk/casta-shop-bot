@@ -42,7 +42,7 @@ async def catalog_handler(message: Message):
     await message.answer(
         "Каталог скоро будет тут 😎\n"
         "Пока можешь посмотреть вещи в Telegram-канале:\n"
-        "👉 @твой_канал"
+        "👉 https://t.me/+75DF7jFaB29mMTRi"
     )
 
 
