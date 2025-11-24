@@ -215,8 +215,13 @@ async def set_photo(message: Message, state: FSMContext):
 
     catalog = load_catalog()
 
-    # генерируем id на основе длины списка
-    new_id = len(catalog["categories"][category]) + 1
+    # 🔹 ГЛОБАЛЬНЫЙ ID ТОВАРА
+    max_id = 0
+    for items in catalog["categories"].values():
+        for p in items:
+            if p["id"] > max_id:
+                max_id = p["id"]
+    new_id = max_id + 1
 
     product = {
         "id": new_id,
@@ -224,7 +229,7 @@ async def set_photo(message: Message, state: FSMContext):
         "price": price,
         "description": description,
         "photo_file_id": photo_file_id,
-        "category": category
+        "category": category,
     }
 
     catalog["categories"][category].append(product)
@@ -234,8 +239,66 @@ async def set_photo(message: Message, state: FSMContext):
 
     await message.answer(
         "✅ Товар добавлен!\n\n"
+        f"ID: {new_id}\n"
         f"Категория: {category}\n"
         f"Название: {title}\n"
         f"Цена: {price}\n"
         f"Описание: {description}"
+    )
+
+    await state.clear()
+
+    await message.answer(
+        "✅ Товар добавлен!\n\n"
+        f"Категория: {category}\n"
+        f"Название: {title}\n"
+        f"Цена: {price}\n"
+        f"Описание: {description}"
+    )
+
+@router.message(F.text.startswith("/del"))
+async def delete_product(message: Message):
+    """Удаление товара по ID, например: /del 5"""
+    if not is_admin(message.from_user.id):
+        return await message.answer("⛔ У вас нет доступа")
+
+    parts = message.text.split()
+
+    if len(parts) != 2 or not parts[1].isdigit():
+        return await message.answer("Использование: /del <ID_товара>\nНапример: /del 5")
+
+    target_id = int(parts[1])
+
+    catalog = load_catalog()
+    categories = catalog.get("categories", {})
+
+    found = False
+    found_cat = None
+    found_title = None
+
+    # Ищем товар по всем категориям
+    for cat_key, items in categories.items():
+        for idx, product in enumerate(items):
+            if product["id"] == target_id:
+                found = True
+                found_cat = cat_key
+                found_title = product["title"]
+                # Удаляем товар
+                del items[idx]
+                break
+        if found:
+            break
+
+    if not found:
+        return await message.answer(f"❌ Товар с ID {target_id} не найден.")
+
+    # сохраняем обновлённый каталог
+    catalog["categories"] = categories
+    save_catalog(catalog)
+
+    await message.answer(
+        f"🗑 Товар удалён.\n\n"
+        f"ID: {target_id}\n"
+        f"Категория: {found_cat}\n"
+        f"Название: {found_title}"
     )
